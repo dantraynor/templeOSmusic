@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-07-02T08:30:15.089Z",
+  "trackCount": 3,
+  "tracks": [
+    {
+      "id": "library:HolyC - Compiler",
+      "title": "Compiler",
+      "artistName": "HolyC",
+      "albumName": "Library",
+      "durationMs": 0,
+      "artworkUrl": "library/covers/HolyC - Compiler.jpg",
+      "audioUrl": "library/songs/HolyC - Compiler.mp3",
+      "providerId": "library"
+    },
+    {
+      "id": "library:Terry Davis - Covenant",
+      "title": "Covenant",
+      "artistName": "Terry Davis",
+      "albumName": "Library",
+      "durationMs": 0,
+      "artworkUrl": "library/covers/Terry Davis - Covenant.jpg",
+      "audioUrl": "library/songs/Terry Davis - Covenant.mp3",
+      "providerId": "library"
+    },
+    {
+      "id": "library:Terry Davis - Divine",
+      "title": "Divine",
+      "artistName": "Terry Davis",
+      "albumName": "Library",
+      "durationMs": 0,
+      "artworkUrl": "library/covers/Terry Davis - Divine.jpg",
+      "audioUrl": "library/songs/Terry Davis - Divine.mp3",
+      "providerId": "library"
+    }
+  ]
+}

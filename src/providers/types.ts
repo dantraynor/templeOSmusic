@@ -68,22 +68,25 @@ export interface MusicProvider {
   initialize(): Promise<ProviderCapabilities>;
   shutdown(): Promise<void>;
   
-  getCapabilities(): ProviderCapabilities;
-  getAuthState(): AuthState;
-  
-  // Optional auth methods
-  beginAuth?(): Promise<void>;
-  endAuth?(): Promise<void>;
-  
-  // Content methods
-  resolveFromLocalPaths?(filePaths: string[]): Promise<Track[]>;
-  getPlaybackSource(trackOrId: Track | string): Promise<PlaybackSource>;
-  
-  // Optional search
-  searchTracks?(query: string, cursor?: string): Promise<SearchResult>;
-  
-  // Optional artwork
-  getArtworkUrl?(trackOrId: Track | string, size?: number): Promise<string>;
+   getCapabilities(): ProviderCapabilities;
+   getAuthState(): AuthState;
+   
+   // Optional auth methods
+   beginAuth?(): Promise<void>;
+   endAuth?(): Promise<void>;
+   
+   // Content methods
+   resolveFromFiles?(files: File[]): Promise<Track[]>;
+   getPlaybackSource(trackOrId: Track | string): Promise<PlaybackSource>;
+   
+   // Optional curated library listing
+   getLibraryTracks?(): Track[];
+   
+   // Optional search
+   searchTracks?(query: string, cursor?: string): Promise<SearchResult>;
+   
+   // Optional artwork
+   getArtworkUrl?(trackOrId: Track | string, size?: number): Promise<string>;
 }
 
 // Provider events

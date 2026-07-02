@@ -20,8 +20,8 @@
         }
         
         html, body {
-            width: 640px;
-            height: 480px;
+            width: 100vw;
+            height: 100vh;
             overflow: hidden;
             background: #000000;
             font-family: 'Courier New', 'VGA', monospace;
@@ -30,12 +30,18 @@
             image-rendering: pixelated;
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
         }
         
         #root {
             width: 640px;
             height: 480px;
             position: relative;
+            transform: scale(min(calc(100vw / 640px), calc(100vh / 480px)));
+            transform-origin: center center;
         }
         
         /* CRT effect overlay */
@@ -105,6 +111,5 @@
 </head>
 <body>
     <div id="root" class="crt"></div>
-    <script src="./TemplePlayer.js"></script>
 </body>
 </html>

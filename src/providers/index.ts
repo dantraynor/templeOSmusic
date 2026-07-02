@@ -1,19 +1,21 @@
 import { EventEmitter } from '../utils/EventEmitter';
-import { MusicProvider, ProviderEvents, ProviderError } from './types';
+import { MusicProvider, ProviderEvents, ProviderError, Track } from './types';
 import { LocalFilesProvider } from './LocalFilesProvider';
 import { TidalProvider } from './TidalProvider';
+import { LibraryProvider } from './LibraryProvider';
 
 export * from './types';
 
 export class ProviderRegistry extends EventEmitter {
   private providers = new Map<string, MusicProvider>();
   private activeProvider: MusicProvider | null = null;
-  
+   
   constructor() {
     super();
     
     // Register built-in providers
     this.registerProvider(new LocalFilesProvider());
+    this.registerProvider(new LibraryProvider());
     this.registerProvider(new TidalProvider());
   }
   
@@ -40,6 +42,15 @@ export class ProviderRegistry extends EventEmitter {
   
   getProvider(id: string): MusicProvider | undefined {
     return this.providers.get(id);
+  }
+
+  // Convenience: return the curated library track list (empty if unavailable)
+  getLibraryTracks(): Track[] {
+    const provider = this.providers.get('library');
+    if (provider && provider.getLibraryTracks) {
+      return provider.getLibraryTracks();
+    }
+    return [];
   }
   
   getActiveProvider(): MusicProvider {

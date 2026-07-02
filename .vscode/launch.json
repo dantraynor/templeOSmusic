@@ -2,18 +2,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Main Process",
-      "type": "node",
+      "name": "Launch in Chrome",
+      "type": "chrome",
       "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
-      "windows": {
-        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
-      },
-      "args": [
-        "."
-      ],
-      "outputCapture": "std"
+      "url": "http://localhost:8080",
+      "webRoot": "${workspaceFolder}/dist"
     }
   ]
 }

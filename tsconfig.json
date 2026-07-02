@@ -6,7 +6,6 @@
     "rootDir": "."
   },
   "include": [
-    "src/**/*",
-    "electron/**/*"
+    "src/**/*"
   ]
 }

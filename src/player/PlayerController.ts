@@ -20,6 +20,7 @@ export class PlayerController extends EventEmitter {
   private sourceNode: MediaElementAudioSourceNode | null = null;
   private analyserNode: AnalyserNode | null = null;
   private gainNode: GainNode | null = null;
+  private currentBlobUrl: string | null = null;
   
   private state: PlayerState = {
     status: 'stopped',
@@ -100,14 +101,18 @@ export class PlayerController extends EventEmitter {
     this.emit('error', { type: 'playback', error });
   }
   
-  async loadQueue(tracks: Track[]): Promise<void> {
+  async loadQueue(tracks: Track[], startIndex: number = 0): Promise<void> {
+    const safeIndex = tracks.length === 0
+      ? -1
+      : Math.max(0, Math.min(startIndex, tracks.length - 1));
+
     this.updateState({
       queue: tracks,
-      queueIndex: tracks.length > 0 ? 0 : -1
+      queueIndex: safeIndex
     });
-    
+
     if (tracks.length > 0) {
-      await this.loadTrack(0);
+      await this.loadTrack(safeIndex);
     }
   }
   
@@ -127,11 +132,22 @@ export class PlayerController extends EventEmitter {
       // Get playback source from provider
       const provider = providerRegistry.getProviderForDescriptor(track.id);
       const source = await provider.getPlaybackSource(track);
-      
+
+      // Revoke the previous blob URL (if any) before loading a new track
+      if (this.currentBlobUrl) {
+        URL.revokeObjectURL(this.currentBlobUrl);
+        this.currentBlobUrl = null;
+      }
+
       // Load audio
       this.audio.src = source.url;
       this.audio.load();
-      
+
+      // Track blob URLs so we can revoke them later (memory hygiene)
+      if (source.url.startsWith('blob:')) {
+        this.currentBlobUrl = source.url;
+      }
+
       // Initialize audio context on first play
       if (!this.audioContext) {
         this.initializeAudioContext();
@@ -144,8 +160,13 @@ export class PlayerController extends EventEmitter {
   
   async play(): Promise<void> {
     if (this.state.status === 'playing') return;
-    
+
     try {
+      // Browsers suspend AudioContext until a user gesture occurs; resume it
+      // here so playback + the visualizer analyser work under autoplay policy.
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+      }
       await this.audio.play();
     } catch (error) {
       console.error('Failed to play:', error);
@@ -213,11 +234,16 @@ export class PlayerController extends EventEmitter {
   destroy(): void {
     this.audio.pause();
     this.audio.src = '';
-    
+
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl);
+      this.currentBlobUrl = null;
+    }
+
     if (this.audioContext) {
       this.audioContext.close();
     }
-    
+
     this.removeAllListeners();
   }
 }

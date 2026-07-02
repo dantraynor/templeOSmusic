@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { PlayerController, PlayerState } from "../player/PlayerController";
 import { providerRegistry } from "../providers";
+import type { Track } from "../providers";
 import { FileBrowser } from "./components/FileBrowser";
 
 // Temple constants
@@ -55,6 +56,7 @@ interface TemplePlayerState {
     artist: string;
     album: string;
     duration: number;
+    coverUrl?: string;
   } | null;
   progress: number;
   volume: number;
@@ -62,8 +64,8 @@ interface TemplePlayerState {
   currentQuote: string;
   bootComplete: boolean;
   showHelp: boolean;
-  showFileBrowser: boolean;
   showEnhancedFileBrowser: boolean;
+  showLibrary: boolean;
   showQuoteInterlude: boolean;
   quoteInterludeEnabled: boolean;
   divineIntellectMode: boolean;
@@ -73,6 +75,7 @@ interface TemplePlayerState {
   currentCommand: string;
   lastTrackId?: string;
   playlist: string[];
+  libraryTracks: Track[];
 }
 
 // Global player controller instance
@@ -88,8 +91,8 @@ const TemplePlayer: React.FC = () => {
     currentQuote: TERRY_QUOTES[0],
     bootComplete: false,
     showHelp: false,
-    showFileBrowser: false,
     showEnhancedFileBrowser: false,
+    showLibrary: false,
     showQuoteInterlude: false,
     quoteInterludeEnabled: true,
     divineIntellectMode: false,
@@ -98,11 +101,13 @@ const TemplePlayer: React.FC = () => {
     commandHistory: [],
     currentCommand: "",
     lastTrackId: undefined,
-    playlist: []
+    playlist: [],
+    libraryTracks: []
   });
 
   const [bootLines, setBootLines] = useState<string[]>([]);
   const commandInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const visualizerBars = useRef<number[]>(new Array(16).fill(0));
   const animationFrame = useRef<number>();
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -112,6 +117,12 @@ const TemplePlayer: React.FC = () => {
     const initializePlayer = async () => {
       await providerRegistry.initialize();
       playerController = new PlayerController();
+
+      // Load curated library tracks (covers + audio URLs from manifest)
+      const libraryTracks = providerRegistry.getLibraryTracks();
+      if (libraryTracks.length > 0) {
+        setState(prev => ({ ...prev, libraryTracks }));
+      }
       
       // Listen to player state changes
       playerController.on('stateChanged', (playerState: PlayerState) => {
@@ -125,7 +136,8 @@ const TemplePlayer: React.FC = () => {
             title: playerState.currentTrack.title,
             artist: playerState.currentTrack.artistName,
             album: playerState.currentTrack.albumName,
-            duration: playerState.durationMs / 1000
+            duration: playerState.durationMs / 1000,
+            coverUrl: playerState.currentTrack.artworkUrl
           } : null
         }));
         
@@ -264,6 +276,10 @@ const TemplePlayer: React.FC = () => {
             quoteInterludeEnabled: !prev.quoteInterludeEnabled
           }));
           break;
+        case 'F4':
+          e.preventDefault();
+          setState(prev => ({ ...prev, showLibrary: !prev.showLibrary }));
+          break;
         case 'F6':
           e.preventDefault();
           setState(prev => ({
@@ -293,8 +309,8 @@ const TemplePlayer: React.FC = () => {
           setState(prev => ({
             ...prev,
             showHelp: false,
-            showFileBrowser: false,
             showEnhancedFileBrowser: false,
+            showLibrary: false,
             showQuoteInterlude: false
           }));
           break;
@@ -328,7 +344,17 @@ const TemplePlayer: React.FC = () => {
       if (command === "LOAD" || command === "LOAD();" || command === "OPEN" || command === "OPEN();") {
         setState(prev => ({
           ...prev,
-          showFileBrowser: true,
+          currentCommand: ""
+        }));
+        openFileDialog();
+        return;
+      }
+
+      // Toggle the curated library cover grid
+      if (command === "LIBRARY" || command === "LIBRARY();") {
+        setState(prev => ({
+          ...prev,
+          showLibrary: !prev.showLibrary,
           currentCommand: ""
         }));
         return;
@@ -442,45 +468,61 @@ const TemplePlayer: React.FC = () => {
     }
   }, [state.currentCommand]);
 
-  const handleFileSelect = useCallback(async () => {
-    if (!playerController) return;
-    
-    // Use the preload API to open file dialog
-    const filePaths = await (window as any).templeAPI.openFileDialog();
-    if (filePaths && filePaths.length > 0) {
-      // Load files using local provider
-      const provider = providerRegistry.getProvider('local');
-      if (provider && provider.resolveFromLocalPaths) {
-        const tracks = await provider.resolveFromLocalPaths(filePaths);
-        await playerController.loadQueue(tracks);
-        await playerController.play();
-        
-        setState(prev => ({
-          ...prev,
-          playlist: filePaths,
-          showFileBrowser: false
-        }));
-      }
-    }
-  }, []);
+  const loadFiles = useCallback(async (files: File[]) => {
+    if (!playerController || files.length === 0) return;
 
-  const handleEnhancedFileSelect = useCallback(async (filePaths: string[]) => {
-    if (!playerController || filePaths.length === 0) return;
-    
-    // Load files using local provider
     const provider = providerRegistry.getProvider('local');
-    if (provider && provider.resolveFromLocalPaths) {
-      const tracks = await provider.resolveFromLocalPaths(filePaths);
+    if (provider && provider.resolveFromFiles) {
+      const tracks = await provider.resolveFromFiles(files);
       await playerController.loadQueue(tracks);
       await playerController.play();
-      
+
       setState(prev => ({
         ...prev,
-        playlist: filePaths,
+        playlist: files.map(f => f.name),
         showEnhancedFileBrowser: false
       }));
     }
   }, []);
+
+  const openFileDialog = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (fileList && fileList.length > 0) {
+      await loadFiles(Array.from(fileList));
+    }
+    // Reset so selecting the same file again fires another change event
+    e.target.value = '';
+  }, [loadFiles]);
+
+  const handleEnhancedFileSelect = useCallback(async (files: File[]) => {
+    await loadFiles(files);
+  }, [loadFiles]);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    const droppedFiles = Array.from(e.dataTransfer.files).filter(f =>
+      f.type.startsWith('audio/') || /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(f.name)
+    );
+    if (droppedFiles.length > 0) {
+      await loadFiles(droppedFiles);
+    }
+  }, [loadFiles]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const handleLibrarySelect = useCallback(async (track: Track, index: number) => {
+    if (!playerController) return;
+    const tracks = state.libraryTracks;
+    if (tracks.length === 0) return;
+    await playerController.loadQueue(tracks, index);
+    await playerController.play();
+  }, [state.libraryTracks]);
 
   const handleCloseEnhancedFileBrowser = useCallback(() => {
     setState(prev => ({ ...prev, showEnhancedFileBrowser: false }));
@@ -520,14 +562,24 @@ const TemplePlayer: React.FC = () => {
   }
 
   return (
-    <div className="temple-container">
+    <div
+      className="temple-container"
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+    >
+      {/* Hidden file input for LOAD/OPEN command and FILE menu */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a,.aac"
+        multiple
+        onChange={handleFileInputChange}
+        style={{ display: 'none' }}
+      />
+
       {/* Title Bar */}
       <div className="temple-title-bar">
-        <span className="title">TEMPLE PLAYER (TERRY TRIBUTE)</span>
-        <div className="controls">
-          <div className="control-btn" onClick={() => (window as any).templeAPI.minimize()}>_</div>
-          <div className="control-btn" onClick={() => (window as any).templeAPI.close()}>X</div>
-        </div>
+        <span className="title">TempleOS</span>
       </div>
 
       {/* Menu Bar */}
@@ -535,7 +587,7 @@ const TemplePlayer: React.FC = () => {
         <div className="temple-menu-item" onClick={() => setState(prev => ({ ...prev, showEnhancedFileBrowser: true }))}>FILE</div>
         <div className="temple-menu-item">EDIT</div>
         <div className="temple-menu-item">SEARCH</div>
-        <div className="temple-menu-item">MUSIC</div>
+        <div className="temple-menu-item" onClick={() => setState(prev => ({ ...prev, showLibrary: !prev.showLibrary }))}>LIBRARY</div>
         <div className="temple-menu-item" onClick={() => setState(prev => ({ ...prev, showHelp: true }))}>HELP</div>
       </div>
 
@@ -562,15 +614,24 @@ const TemplePlayer: React.FC = () => {
               <span className="window-title">MUSIC PLAYER</span>
               <span className="window-controls">_□X</span>
             </div>
-            <div className="window-content">
-              <div className="track-title">
-                {state.currentTrack?.title || "NO TRACK LOADED"}
+            <div className="window-content now-playing">
+              <div className="now-playing-cover">
+                {state.currentTrack?.coverUrl ? (
+                  <img src={state.currentTrack.coverUrl} alt="" className="np-cover-img" />
+                ) : (
+                  <div className="np-cover-placeholder">♪</div>
+                )}
               </div>
-              <div className="track-artist">
-                ARTIST: {state.currentTrack?.artist || "UNKNOWN"}
-              </div>
-              <div className="track-album">
-                ALBUM: {state.currentTrack?.album || "UNKNOWN"}
+              <div className="now-playing-info">
+                <div className="track-title">
+                  {state.currentTrack?.title || "NO TRACK LOADED"}
+                </div>
+                <div className="track-artist">
+                  {state.currentTrack?.artist || "UNKNOWN"}
+                </div>
+                <div className="track-album">
+                  {state.currentTrack?.album || "UNKNOWN"}
+                </div>
               </div>
             </div>
           </div>
@@ -632,7 +693,7 @@ const TemplePlayer: React.FC = () => {
           </div>
 
           {/* Desktop Icons */}
-          <div className="desktop-icon" style={{ top: '160px', left: '40px' }}>
+          <div className="desktop-icon" style={{ top: '160px', left: '40px' }} onClick={() => setState(prev => ({ ...prev, showLibrary: true }))}>
             <div className="icon-image">💿</div>
             <div className="icon-label">MUSIC</div>
           </div>
@@ -656,6 +717,52 @@ const TemplePlayer: React.FC = () => {
             <div className="icon-image">🐘</div>
             <div className="icon-label">ELEPHANT</div>
           </div>
+
+          {/* Library cover grid - click a cover to play */}
+          {state.showLibrary && (
+            <div className="desktop-window library-window" style={{ top: '90px', left: '70px', width: '500px', height: '300px' }}>
+              <div className="window-title-bar">
+                <span className="window-icon">💿</span>
+                <span className="window-title">LIBRARY</span>
+                <span className="window-controls" onClick={() => setState(prev => ({ ...prev, showLibrary: false }))}>X</span>
+              </div>
+              <div className="window-content library-content">
+                {state.libraryTracks.length === 0 ? (
+                  <div className="library-empty">
+                    <div>NO LIBRARY TRACKS</div>
+                    <div className="text-gray">ADD SONGS TO library/songs/ AND RUN npm run gen-library</div>
+                  </div>
+                ) : (
+                  <div className="cover-grid">
+                    {state.libraryTracks.map((track, index) => {
+                      const isCurrent = state.currentTrack?.id === track.id;
+                      return (
+                        <button
+                          key={track.id}
+                          className={`cover-cell ${isCurrent ? 'current' : ''}`}
+                          onClick={() => handleLibrarySelect(track, index)}
+                          title={`${track.artistName} - ${track.title}`}
+                        >
+                          <div className="cover-cell-art">
+                            {track.artworkUrl ? (
+                              <img src={track.artworkUrl} alt="" className="cover-img" />
+                            ) : (
+                              <div className="cover-placeholder">♪</div>
+                            )}
+                            {isCurrent && state.isPlaying && (
+                              <div className="cover-playing-badge">▶</div>
+                            )}
+                          </div>
+                          <div className="cover-cell-title">{track.title}</div>
+                          <div className="cover-cell-artist">{track.artistName}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Quote Display - moved to bottom */}
@@ -670,7 +777,7 @@ const TemplePlayer: React.FC = () => {
         <div className="f-key"><span>F1</span> HELP</div>
         <div className="f-key" onClick={() => setState(prev => ({ ...prev, showEnhancedFileBrowser: true }))}><span>F2</span> LOAD</div>
         <div className="f-key"><span>F3</span> QUOTES</div>
-        <div className="f-key"><span>F5</span> REFRESH</div>
+        <div className="f-key" onClick={() => setState(prev => ({ ...prev, showLibrary: !prev.showLibrary }))}><span>F4</span> LIBRARY</div>
         <div className="f-key"><span>F6</span> DIVINE</div>
       </div>
 
@@ -699,6 +806,7 @@ const TemplePlayer: React.FC = () => {
             <div><span className="help-key">RIGHT</span> <span className="help-desc">NEXT TRACK</span></div>
             <div><span className="help-key">F1</span> <span className="help-desc">TOGGLE HELP</span></div>
             <div><span className="help-key">F2</span> <span className="help-desc">LOAD FILES</span></div>
+            <div><span className="help-key">F4</span> <span className="help-desc">TOGGLE LIBRARY</span></div>
             <div><span className="help-key">ESC</span> <span className="help-desc">CLOSE DIALOGS</span></div>
             <br />
             <div className="text-cyan">COMMANDS:</div>

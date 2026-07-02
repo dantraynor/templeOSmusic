@@ -6,7 +6,7 @@ A tribute to Terry A. Davis and TempleOS - maintaining the sacred covenant of 64
 
 ### Prerequisites
 - Node.js v20+ and npm
-- macOS, Windows, or Linux
+- Any OS
 
 ### Running the Application
 
@@ -14,59 +14,55 @@ A tribute to Terry A. Davis and TempleOS - maintaining the sacred covenant of 64
 # Install dependencies
 npm install
 
-# Start the application
-npm start
-
-# Development mode (with hot reload)
+# Start the dev server (hot reload)
 npm run dev
+
+# Production build to dist/
+npm run build
 ```
 
-### VS Code Debugging
-1. Open the "Run and Debug" panel (Cmd+Shift+D)
-2. Select "Debug Main Process" 
-3. Press F5 to start debugging
+After `npm run dev`, open http://localhost:8080 in your browser.
 
 ## Project Structure
 
 ```
-temple-player-clean/
-├── electron/                 # Electron main process
-│   ├── main.ts              # Main process entry point
-│   └── preload.ts           # Preload script for IPC
+temple-player/
 ├── src/
 │   ├── player/              # Audio playback engine
 │   │   └── PlayerController.ts
 │   ├── providers/           # Audio source providers
 │   │   ├── LocalFilesProvider.ts
-│   │   ├── TidalProvider.ts
-│   │   └── types.ts
+│   │   ├── TidalProvider.ts  (stubbed scaffold)
+│   │   ├── types.ts
+│   │   └── index.ts
 │   ├── renderer/            # React UI components
 │   │   ├── TemplePlayer.tsx # Main UI component
-│   │   ├── temple.html      # HTML entry point
+│   │   ├── components/
+│   │   │   └── FileBrowser.tsx
+│   │   ├── temple.html      # HTML template (inline CRT styles)
 │   │   └── styles/
 │   │       └── temple.css   # TempleOS-inspired styling
 │   └── utils/
 │       └── EventEmitter.ts  # Event system
-├── dist/                    # Built files (auto-generated)
-└── .vscode/
-    └── launch.json          # VS Code debug configuration
+├── dist/                    # Built static files (auto-generated)
+├── webpack.renderer.config.js
+└── tsconfig*.json
 ```
 
 ## Build Process
 
-The application uses a multi-step build process:
+The application uses webpack 5:
 
-1. **TypeScript Compilation**: `npm run build:main` and `npm run build:preload`
-2. **React Bundling**: `npm run build:renderer` (uses Webpack)
-3. **Asset Copying**: `npm run build:assets`
-4. **Full Build**: `npm run build` (runs all above steps)
+1. **Dev:** `npm run dev` — webpack-dev-server with HMR on port 8080.
+2. **Build:** `npm run build` — emits a static bundle to `dist/` (index.html, TemplePlayer.js, styles/).
+
+`HtmlWebpackPlugin` assembles `index.html` from `src/renderer/temple.html` and injects the JS bundle. `CopyWebpackPlugin` copies the styles folder. Inline CRT scanline styles live in the HTML template.
 
 ## TempleOS Authenticity Features
 
 ### Sacred Covenant: 640x480 16-Color
-- Fixed window dimensions (640x480)
+- Fixed canvas dimensions (640x480)
 - 16-color VGA palette strictly enforced
-- No window resizing (as Terry intended)
 - Pixel-perfect character grid system
 
 ### Interface Elements
@@ -89,7 +85,7 @@ The application uses a multi-step build process:
 - **Commands** (type in command line):
   - `PLAY` / `PAUSE` / `NEXT` / `PREV`
   - `VOLUME(0-100)`: Set volume
-  - `LOAD` / `OPEN`: Open file dialog
+  - `LOAD` / `OPEN`: Open file picker
   - `GOD`: Get divine number
   - `TERRY`: Honor Terry A. Davis
   - `HELP`: Show help
@@ -101,32 +97,36 @@ The application uses a multi-step build process:
 - MP3, WAV, OGG, FLAC, M4A, AAC
 
 ### Providers
-- **LocalFilesProvider**: Plays local audio files
-- **TidalProvider**: Integration with Tidal streaming (future)
+- **LocalFilesProvider**: Plays local audio files via `URL.createObjectURL(blob)` — files never leave the browser.
+- **TidalProvider**: Scaffolded interface only; not functional.
 
 ### Features
 - Real-time audio visualization (16-bar spectrum)
 - Volume control with block-style meter
 - Progress tracking and seeking
+- Browser autoplay-policy handling (`AudioContext.resume()` on user gesture)
 
-## Development Tips
+### Loading Files
+Two equivalent paths, both feeding the same `LocalFilesProvider`:
+1. **File picker** — `LOAD`/`OPEN` command, FILE menu, or F2 opens a hidden `<input type="file" accept="audio/*" multiple>`.
+2. **Drag and drop** — drop audio files anywhere on the player, or into the FileBrowser modal.
 
-### Environment Issues
-The project includes automatic fixes for the `ELECTRON_RUN_AS_NODE` environment variable that can interfere with Electron. The npm scripts automatically unset this variable.
+Blob URLs are revoked on track change / unload to avoid memory leaks.
 
-### Hot Reload
-Use `npm run dev` for development - it watches the renderer code and automatically rebuilds when you make changes.
+## Deployment
 
-### Debugging
-- Main process: Use VS Code debugger with "Debug Main Process"
-- Renderer process: Open DevTools in the running app (Cmd+Option+I)
+The build output in `dist/` is fully static. For **Cloudflare Pages**:
+- Build command: `npm run build`
+- Build output directory: `dist`
+
+Works equally on Netlify, GitHub Pages, S3 + CloudFront, etc.
 
 ## Extending the Application
 
 ### Adding New Audio Providers
 1. Create a new provider in `src/providers/`
-2. Implement the `AudioProvider` interface
-3. Register in `src/providers/index.ts`
+2. Implement the `MusicProvider` interface (see `types.ts`)
+3. Register it in `src/providers/index.ts`
 
 ### Customizing the UI
 - Modify `src/renderer/TemplePlayer.tsx` for React components
@@ -134,33 +134,18 @@ Use `npm run dev` for development - it watches the renderer code and automatical
 - Maintain 16-color palette and 8x8 character grid alignment
 
 ### Adding Commands
-Add new commands in the `handleCommand` function in `TemplePlayer.tsx`
-
-## Building for Distribution
-
-```bash
-# Create distributable packages
-npm run dist
-
-# Create unpacked directory (for testing)
-npm run pack
-```
+Add new commands in the `handleCommand` function in `TemplePlayer.tsx`.
 
 ## Troubleshooting
 
-### Application Won't Start
-- Ensure Node.js v20+ is installed
-- Run `npm install` to install dependencies
-- Try `npm run build` to rebuild everything
-- Check that no other Electron apps are interfering
+### Audio Won't Play
+- Browsers block autoplay until a user gesture. Click the player or press Space first.
+- Verify the file format is supported (MP3/WAV/OGG/FLAC/M4A/AAC).
+- Check the browser console for `AudioContext` suspension warnings.
 
-### Audio Issues
-- Verify audio file formats are supported
-- Check system audio permissions
-- Ensure audio files are not corrupted
-
-### Environment Variables
-If you encounter Electron API issues, the fix has been applied to your shell configuration. Restart your terminal or VS Code.
+### Build Issues
+- Run `npm install` to install dependencies.
+- Remove `dist/` and `node_modules/` and reinstall if state looks stale.
 
 ## Terry's Vision
 

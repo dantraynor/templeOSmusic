@@ -1,20 +1,13 @@
 {
-  "name": "temple-player-standalone",
-  "version": "0.1.0",
-  "description": "Temple Player (Terry Tribute) - standalone Electron app",
-  "main": "dist/electron/main.js",
+  "name": "temple-player",
+  "version": "0.2.0",
+  "description": "Temple Player (Terry Tribute) - web app",
   "author": "Luna Community",
   "license": "MIT",
   "scripts": {
-    "build:main": "tsc -p tsconfig.main.json",
-    "build:preload": "tsc -p tsconfig.preload.json",
-    "build:renderer": "webpack --config webpack.renderer.config.js",
-    "build:assets": "mkdir -p dist/renderer/styles && cp src/renderer/temple.html dist/renderer/ 2>/dev/null || true && cp -R src/renderer/styles/* dist/renderer/styles/ 2>/dev/null || true",
-    "build": "npm run build:main && npm run build:preload && npm run build:renderer && npm run build:assets",
-    "start": "env -u ELECTRON_RUN_AS_NODE npm run build && env -u ELECTRON_RUN_AS_NODE electron .",
-    "dev": "env -u ELECTRON_RUN_AS_NODE npm run build:renderer -- --watch & env -u ELECTRON_RUN_AS_NODE electron .",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "gen-library": "node scripts/gen-library.mjs",
+    "dev": "webpack serve --config webpack.renderer.config.js --mode development",
+    "build": "npm run gen-library && webpack --config webpack.renderer.config.js --mode production"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -24,29 +17,14 @@
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "copy-webpack-plugin": "^12.0.2",
     "css-loader": "^6.10.0",
-    "electron": "^30.5.1",
-    "electron-builder": "^24.13.3",
-    "file-loader": "^6.2.0",
-    "path-browserify": "^1.0.1",
+    "html-webpack-plugin": "^5.6.0",
     "style-loader": "^3.3.4",
     "ts-loader": "^9.5.0",
     "typescript": "^5.0.0",
     "webpack": "^5.90.0",
-    "webpack-cli": "^5.1.0"
-  },
-  "build": {
-    "productName": "Temple Player (Terry Tribute)",
-    "appId": "org.terry.templeplayer",
-    "mac": {
-      "category": "public.app-category.music"
-    },
-    "files": [
-      "dist/**/*",
-      "package.json"
-    ],
-    "directories": {
-      "buildResources": "build"
-    }
+    "webpack-cli": "^5.1.0",
+    "webpack-dev-server": "^5.0.4"
   }
 }

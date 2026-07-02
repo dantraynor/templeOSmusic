@@ -615,6 +615,46 @@
   font-style: italic;
 }
 
+/* Drop zone (web file loading) */
+.file-drop-zone {
+  flex: 1;
+  border: 2px dashed var(--temple-dark-gray);
+  background: var(--temple-white);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--temple-black);
+  text-align: center;
+  padding: 12px;
+}
+
+.file-drop-zone:hover {
+  background: var(--temple-light-gray);
+}
+
+.file-drop-zone.drag-active {
+  border-color: var(--temple-blue);
+  background: var(--temple-cyan);
+  color: var(--temple-black);
+}
+
+.file-drop-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.file-drop-text {
+  font-weight: bold;
+  font-size: 9px;
+  margin-bottom: 4px;
+}
+
+.file-drop-hint {
+  font-size: 7px;
+}
+
 /* Scrollbar styling for file browser */
 .file-list::-webkit-scrollbar {
   width: 8px;
@@ -863,4 +903,177 @@
   50% {
     filter: drop-shadow(0 0 8px var(--temple-red));
   }
+}
+
+/* Now-playing cover in MUSIC PLAYER window */
+.now-playing {
+  display: flex;
+  gap: 4px;
+  height: 100%;
+}
+
+.now-playing-cover {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 1px solid var(--temple-black);
+  background: var(--temple-light-gray);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  image-rendering: pixelated;
+}
+
+.np-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.np-cover-placeholder {
+  font-size: 16px;
+  color: var(--temple-dark-gray);
+}
+
+.now-playing-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.now-playing-info .track-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Library cover-grid window */
+.library-window {
+  z-index: 100;
+}
+
+.library-content {
+  padding: 4px;
+  overflow-y: auto;
+}
+
+.library-empty {
+  text-align: center;
+  color: var(--temple-dark-gray);
+  padding: 24px 8px;
+  font-size: 8px;
+  line-height: 12px;
+}
+
+.cover-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 2px;
+}
+
+.cover-cell {
+  background: var(--temple-white);
+  border: 1px solid var(--temple-dark-gray);
+  padding: 2px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--temple-black);
+  font-family: inherit;
+  font-size: 7px;
+  line-height: 8px;
+}
+
+.cover-cell:hover {
+  background: var(--temple-light-gray);
+  border-color: var(--temple-black);
+}
+
+.cover-cell.current {
+  border: 2px solid var(--temple-blue);
+  background: var(--temple-cyan);
+}
+
+.cover-cell-art {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  position: relative;
+  border: 1px solid var(--temple-black);
+  background: var(--temple-light-gray);
+  overflow: hidden;
+  image-rendering: pixelated;
+  margin-bottom: 2px;
+}
+
+.cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--temple-dark-gray);
+}
+
+.cover-playing-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  background: var(--temple-blue);
+  color: var(--temple-white);
+  font-size: 7px;
+  padding: 0 2px;
+  border: 1px solid var(--temple-black);
+}
+
+.cover-cell-title {
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.cover-cell-artist {
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--temple-dark-gray);
+  font-size: 6px;
+}
+
+/* Library scrollbars */
+.library-content::-webkit-scrollbar {
+  width: 8px;
+}
+.library-content::-webkit-scrollbar-track {
+  background: var(--temple-white);
+  border: 1px solid var(--temple-black);
+}
+.library-content::-webkit-scrollbar-thumb {
+  background: var(--temple-light-gray);
+  border: 1px solid var(--temple-black);
+}
+.library-content::-webkit-scrollbar-thumb:hover {
+  background: var(--temple-dark-gray);
+}
+
+/* Make desktop-icon clickable */
+.desktop-icon {
+  cursor: pointer;
 }
